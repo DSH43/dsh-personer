@@ -1,0 +1,11 @@
+# dsh-personer bundle patch: mounts an in-GUI editor for the global prompt
+# ($DSH_HOME/AGENTS.md) into a dsh web composition.
+#
+# Host half (index.js) serves /plugins/dsh-personer/prompt with a persisted
+# token gate and injects token/base <meta>; the client half (client.js) adds a
+# "全局提示词" item to the Settings panel and opens a read/edit/save dialog.
+#
+# Installed with: dsh plugin --profile web add "github:ywleeo/dsh-personer#main"
+- insert:
+    - id: dsh-personer
+      name: dsh-personer

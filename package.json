@@ -1,0 +1,33 @@
+{
+  "name": "dsh-personer",
+  "version": "0.1.0",
+  "description": "在 dsh Web 的「设置」页里直接编辑全局提示词（$DSH_HOME/AGENTS.md，默认 ~/.dsh/AGENTS.md），作用于所有项目/会话",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "sync": "bash scripts/sync.sh"
+  }
+}
