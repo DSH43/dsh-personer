@@ -8,7 +8,8 @@ SYNCED=0
 for d in "$HOME/.dsh/profiles"/*/node_modules/dsh-personer; do
   [ -d "$d" ] || continue
   # 逐个复制并忽略「源与目标是同一硬链接」时的无操作跳过（cp 会因此返回 1）。
-  for f in index.js client.js package.json cordis.patch.yml; do
+  # host.js 是启动壳动态加载的真实插件，必须一起同步，否则壳会报导入失败。
+  for f in index.js host.js client.js package.json cordis.patch.yml; do
     cp -f "$f" "$d/$f" 2>/dev/null || true
   done
   echo "已同步: $d"

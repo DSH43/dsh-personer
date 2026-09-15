@@ -1,12 +1,15 @@
 /**
  * dsh-personer host 逻辑验证（不触碰真实 ~/.dsh/AGENTS.md）。
  *
+ * 直接加载 host.js（真正干活的那一半，由 index.js 启动壳在运行时加载），
  * 把 DSH_HOME 指到临时目录，stub webServer，验证 apply() 注册的路由：
  *  - GET  /prompt：不存在 → exists=false, content=''
  *  - POST /prompt：写内容 → 文件生成、返回 bytes；再次 GET 读到内容
  *  - /open：返回 404（文件存在时 200）
  *  - index.html 注入 token/base <meta>
  *  - token 文件已生成
+ *
+ * 启动壳本身的行为由 test-shell.mjs 覆盖。
  */
 import { mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -27,7 +30,7 @@ const ctx = {
   effect(fn, label) { const r = fn(); if (typeof r === 'function') cleanups.push(r); return cleanups.length },
 }
 
-const mod = await import('./index.js')
+const mod = await import('./host.js')
 const app = mod.apply(ctx)
 
 function makeRes() {

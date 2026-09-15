@@ -17,15 +17,29 @@
 
 ## 架构
 
-单一插件，host + client 两半，模式与 `dsh-clip` / `dsh-md-preview` 一致。
+host + client 两半，模式与 `dsh-clip` / `dsh-md-preview` 一致。host 拆成「启动壳 + 真实插件」两层，理由见下节。
 
 | 文件 | 作用 |
 |---|---|
-| `index.js` | host 侧（Cordis 插件）。在 `webServer` 上注册 `/plugins/dsh-personer/prompt`（GET 读 / POST 写）与 `/open`；向 `index.html` 注入 `dsh-personer-token/base` 两个 `<meta>`；写入 token 到 `$DSH_HOME/plugins/dsh-personer.token`。 |
+| `index.js` | **启动壳**（Cordis 插件）。本身不 import 任何 dsh 核心模块，只在运行时动态加载 `host.js` 并挂成子插件；失败只丢功能，不影响 dsh 启动。 |
+| `host.js` | host 侧真实逻辑。在 `webServer` 上注册 `/plugins/dsh-personer/prompt`（GET 读 / POST 写）与 `/open`；向 `index.html` 注入 `dsh-personer-token/base` 两个 `<meta>`；写入 token 到 `$DSH_HOME/plugins/dsh-personer.token`。 |
 | `client.js` | 客户端（纯 DOM，无 React）。用 `window.__ModuleLoader__.load({ id, factory })` 注册；MutationObserver 在设置弹窗出现时注入「Persona」导航项，点击打开编辑弹窗；从 `<meta>` 读 token/base。 |
 | `cordis.patch.yml` | bundle patch，单条 `insert`（`dsh-personer`）。 |
 
-路由约定见 `index.js` 头部注释。
+路由约定见 `host.js` 头部注释。
+
+### 为什么要启动壳
+
+dsh 的 loader 条目一旦激活失败，boot 的激活审计（`assertEntriesActivated`）会把整棵插件树判死、进程非零退出。dsh 核心每次升级都可能改掉插件依赖的内部接口（`webServer` 路由、`index.html` 注入点、客户端 slot），于是一个插件不兼容就导致 **dsh 起不来**。
+
+启动壳把会坏的部分挪出启动路径：
+
+- 壳不声明 `inject`，所以它的 loader 条目永远 `ACTIVE`，boot 审计永远通过；
+- `host.js` 自己的 `inject: ['webServer']` 在子 fiber 上照常生效，`webServer` 没就绪就先挂起，就绪后自动激活；
+- `host.js` 导入失败、同步抛错、异步 reject，一律只记一条日志，插件停用，dsh 照常启动；
+- 子 fiber 挂在壳下面，于是壳被卸载时（改 `cordis.patch.yml`、热重载、退出）宿主逻辑照常回收，不留残渣。
+
+约束（改 `index.js` 前必读）：`package.json` 的 `main` 必须继续指向 `index.js`，loader 条目名必须继续是裸包名 `dsh-personer`。客户端那一半靠 `dsh.client` + `exports["./client"]` 从 loader 条目名反查包，条目名换成子路径（如 `dsh-personer/xxx`）会导致客户端半边再也不被扫描到。
 
 ## 安装
 
@@ -60,11 +74,26 @@ pnpm sync   # 等价于 bash scripts/sync.sh
 
 ## 验证
 
+代码层（无外部依赖，不碰真实 `~/.dsh`）：
+
+```sh
+node test-shell.mjs   # 启动壳契约：host.js 坏掉时不抛、只报告
+node test-host.mjs    # host 逻辑：路由、token、读写
+```
+
 装好并重启后，打开 dsh Web 的「设置」页，左侧应有 **「Persona」** 项；点它能读取当前的 `AGENTS.md`，编辑、保存后：
 
 1. 「保存」按钮变绿并短暂显示「已保存」；
 2. 文件内容确实写到了 `~/.dsh/AGENTS.md`（`cat ~/.dsh/AGENTS.md` 比对）；
 3. 下一次对话里，注入的系统提示变成新的内容。
+
+若 dsh 升级把 `host.js` 打坏，预期行为是：dsh 正常启动，日志里出现
+
+```
+[dsh-personer] host.js 加载失败，插件功能已停用，dsh 继续运行。原因：…
+```
+
+设置页里「Persona」项消失，其余功能不受影响。照着日志改 `host.js` 即可，`index.js` 不用动。
 
 ## 已知限制（暂无）
 
