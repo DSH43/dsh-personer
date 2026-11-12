@@ -45,7 +45,7 @@ dsh 的 loader 条目一旦激活失败，boot 的激活审计（`assertEntriesA
 
 ```sh
 # 从 git 安装到 web profile
-dsh plugin --profile web add "github:ywleeo/dsh-personer#main"
+dsh plugin --profile web add "github:DSH43/dsh-personer#main"
 
 # 重启后生效
 pnpm dsh web
